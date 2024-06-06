@@ -1,7 +1,8 @@
 #!/bin/bash
 
-root_dir="datasets/nerf_synthetic/"
-list="chair drums ficus hotdog lego materials mic ship"
+root_dir="/home/jet/datasets/nerf_synthetic/"
+#list="chair drums ficus hotdog lego materials mic ship"
+list="lego materials"
 
 for i in $list; do
 python train.py --eval \

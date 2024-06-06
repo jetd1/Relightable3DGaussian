@@ -163,9 +163,9 @@ void construct_bvh(
     thrust::device_ptr<aabb_type> aabbs_ptr = thrust::device_pointer_cast(aabbs_internal);
     const auto aabb_whole = thrust::reduce(
             aabbs_ptr + num_internal_nodes, aabbs_ptr + num_nodes, default_aabb,
-            [] __device__ (const aabb_type& lhs, const aabb_type& rhs) {
+            cuda::proclaim_return_type<aabb_type>([] __device__ (const aabb_type& lhs, const aabb_type& rhs) {
                 return merge(lhs, rhs);
-            });
+            }));
     thrust::device_vector<uint32_t> morton32(num_objects);
 
     thrust::transform(aabbs_ptr + num_internal_nodes, aabbs_ptr + num_nodes,
@@ -183,27 +183,27 @@ void construct_bvh(
     thrust::device_ptr<uint64_t> morton_ptr = thrust::device_pointer_cast(morton);
     thrust::transform(morton32.begin(), morton32.end(), indices.begin(),
                       morton_ptr,
-                      [] __device__ (const uint32_t m, const uint32_t idx)
+                      cuda::proclaim_return_type<uint64_t>([] __device__ (const uint32_t m, const uint32_t idx)
                       {
                           uint64_t m64 = m;
                           m64 <<= 31;
                           m64 |= idx;
                           return m64;
-                      });
+                      }));
     thrust::device_ptr<int32_t> nodes_ptr = thrust::device_pointer_cast(nodes);
 
     uint32_t* indices_ptr = indices.data().get();
     thrust::for_each(thrust::device,
                      thrust::make_counting_iterator<int32_t>(0),
                      thrust::make_counting_iterator<int32_t>(num_objects),
-                     [num_objects, indices_ptr, nodes] __device__ (const int32_t idx){
+                     cuda::proclaim_return_type<void>([num_objects, indices_ptr, nodes] __device__ (const int32_t idx){
                         nodes[(num_objects - 1 + idx) * 5 + 3] = indices_ptr[idx];
-                     });
+                     }));
 
     thrust::for_each(thrust::device,
                      thrust::make_counting_iterator<int32_t>(0),
                      thrust::make_counting_iterator<int32_t>(num_objects - 1),
-                     [num_objects, nodes, morton] __device__ (const int32_t idx)
+                     cuda::proclaim_return_type<void>([num_objects, nodes, morton] __device__ (const int32_t idx)
                      {
                         int32_t* node = nodes + idx * 5;
                          node[3] = -1; //  internal nodes
@@ -224,7 +224,7 @@ void construct_bvh(
                          nodes[node[1]*5]  = idx;
                          nodes[node[2]*5] = idx;
                          return;
-                     });
+                     }));
 
     thrust::device_vector<int> flag_container(num_internal_nodes, 0);
     const auto flags = flag_container.data().get();
@@ -232,7 +232,7 @@ void construct_bvh(
     thrust::for_each(thrust::device,
                      thrust::make_counting_iterator<int32_t>(num_internal_nodes),
                      thrust::make_counting_iterator<int32_t>(num_nodes),
-                     [nodes, aabbs_internal, flags] __device__ (int32_t idx)
+                     cuda::proclaim_return_type<void>([nodes, aabbs_internal, flags] __device__ (int32_t idx)
                      {
                          int32_t num = 1;
                          int32_t parent = *(nodes + idx * 5);
@@ -262,5 +262,5 @@ void construct_bvh(
                              parent = *parent_node;
                          }
                          return;
-                     });
+                     }));
 }

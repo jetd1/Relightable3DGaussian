@@ -42,7 +42,7 @@ class Scene:
         self.test_cameras = {}
         print(os.path.join(args.source_path, "inputs/sfm_scene.json"))
         if os.path.exists(os.path.join(args.source_path, "sparse")):
-            scene_info = sceneLoadTypeCallbacks["Colmap"](args.source_path, args.images, args.eval,
+            scene_info = sceneLoadTypeCallbacks["Colmap"](args.source_path, args.images, args.white_background, args.eval,
                                                           debug=args.debug_cuda)
         elif os.path.exists(os.path.join(args.source_path, "transforms_train.json")):
             print("Found transforms_train.json file, assuming Blender data set!")

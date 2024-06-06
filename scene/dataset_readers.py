@@ -76,6 +76,10 @@ def load_img(path):
     else:  # LDR image
         img = imageio.imread(path)
         img = img / 255
+        # if img.shape[-1] == 4:
+        #     mask = img[..., 3:4]
+        #     img = img[..., 0:3] * mask + (1 - mask)
+        #     # print("WARNING RGBA image, please use white_background=True")
         # img[..., 0:3] = srgb_to_rgb_np(img[..., 0:3])
         hdr = False
     return img, hdr
@@ -150,7 +154,7 @@ def getNerfppNorm(cam_info):
     return {"translate": translate, "radius": radius}
 
 
-def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder, debug=False):
+def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder, white_background=False, debug=False):
     cam_infos = []
     for idx, key in enumerate(cam_extrinsics):
         sys.stdout.write('\r')
@@ -191,6 +195,11 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder, debug=False
         image_path = os.path.join(images_folder, os.path.basename(extr.name))
         image_name = os.path.basename(image_path).split(".")[0]
         image, is_hdr = load_img(os.path.join(images_folder, image_name))
+
+        bg = np.array([1, 1, 1]) if white_background else np.array([0, 0, 0])
+
+        if image.shape[-1] == 4:
+            image = image[:, :, :3] * image[:, :, 3:4] + bg * (1 - image[:, :, 3:4])
 
         mask_path = os.path.join(os.path.dirname(images_folder), "masks", os.path.basename(extr.name))
         mask = np.array(Image.open(mask_path), dtype=np.float32) / 255
@@ -249,7 +258,7 @@ def storePly(path, xyz, rgb, normals=None):
     ply_data.write(path)
 
 
-def readColmapSceneInfo(path, images, eval, llffhold=8, debug=False):
+def readColmapSceneInfo(path, images, white_background, eval, llffhold=8, debug=False):
     try:
         cameras_extrinsic_file = os.path.join(path, "sparse/0", "images.bin")
         cameras_intrinsic_file = os.path.join(path, "sparse/0", "cameras.bin")
@@ -264,7 +273,7 @@ def readColmapSceneInfo(path, images, eval, llffhold=8, debug=False):
     reading_dir = "images" if images is None else images
     cam_infos_unsorted = readColmapCameras(cam_extrinsics=cam_extrinsics, cam_intrinsics=cam_intrinsics,
                                            images_folder=os.path.join(path, reading_dir),
-                                           debug=debug)
+                                           debug=debug, white_background=white_background)
     cam_infos = sorted(cam_infos_unsorted.copy(), key=lambda x: x.image_name)
 
     if "DTU" in path and not debug:
@@ -313,11 +322,17 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
 
     with open(os.path.join(path, transformsfile)) as json_file:
         contents = json.load(json_file)
-        fovx = contents["camera_angle_x"]
+        if "camera_angle_x" in contents:
+            fovx = contents["camera_angle_x"]
+        else:
+            fovx = None
 
         frames = contents["frames"]
         for idx, frame in enumerate(tqdm(frames, leave=False)):
-            image_path = os.path.join(path, frame["file_path"] + extension)
+            if "." not in frame["file_path"]:
+                image_path = os.path.join(path, frame["file_path"] + extension)
+            else:
+                image_path = os.path.join(path, frame["file_path"])
             image_name = Path(image_path).stem
 
             # NeRF 'transform_matrix' is a camera-to-world transform
@@ -352,7 +367,11 @@ def readCamerasFromTransforms(path, transformsfile, white_background, extension=
                 depth = depth * image_mask
                 normal = normal * image_mask[..., np.newaxis]
 
-            fovy = focal2fov(fov2focal(fovx, image.shape[0]), image.shape[1])
+            if fovx is None:
+                fovx = frame["camera_angle_x"]
+                fovy = frame["camera_angle_y"]
+            else:
+                fovy = focal2fov(fov2focal(fovx, image.shape[0]), image.shape[1])
             cam_infos.append(CameraInfo(uid=idx, R=R, T=T, FovY=fovy, FovX=fovx, image=image, image_mask=image_mask,
                                         image_path=image_path, depth=depth, normal=normal, image_name=image_name,
                                         width=image.shape[1], height=image.shape[0], hdr=is_hdr))

@@ -1,13 +1,12 @@
 #!/bin/bash
 
-root_dir="/home/jet/datasets/nerf_synthetic/"
-#list="chair drums ficus hotdog lego materials mic ship"
-list="lego materials"
+root_dir="/home/jet/datasets/cafe_capture/benchmark_v6/"
+list="3mbox_v6"
 
 for i in $list; do
 python train.py --eval \
 -s ${root_dir}${i} \
--m output/NeRF_Syn/${i}/3dgs \
+-m output/cafe_capture/${i}/3dgs \
 --lambda_normal_render_depth 0.01 \
 --lambda_mask_entropy 0.1 \
 --densification_interval 500 \
@@ -15,8 +14,8 @@ python train.py --eval \
 
 python train.py --eval \
 -s ${root_dir}${i} \
--m output/NeRF_Syn/${i}/neilf \
--c output/NeRF_Syn/${i}/3dgs/chkpnt30000.pth \
+-m output/cafe_capture/${i}/neilf \
+-c output/cafe_capture/${i}/3dgs/chkpnt30000.pth \
 -t neilf \
 --lambda_normal_render_depth 0.01 \
 --use_global_shs \

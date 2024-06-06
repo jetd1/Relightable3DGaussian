@@ -2,6 +2,7 @@
 #define BVH_UTILITY_CUH
 #include <vector_types.h>
 #include <math_constants.h>
+#include <cuda/functional>
 
 struct aabb_type{
     float3 lower;

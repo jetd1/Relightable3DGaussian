@@ -309,12 +309,14 @@ def save_training_vis(viewpoint_cam, gaussians, background, render_fn, pipe, opt
                 render_pkg["normal"] * 0.5 + 0.5,
                 viewpoint_cam.original_image.cuda(),
                 visualize_depth(viewpoint_cam.depth.cuda()),
+                viewpoint_cam.image_mask.cuda().repeat(3, 1, 1),
                 viewpoint_cam.normal.cuda() * 0.5 + 0.5,
-                render_pkg["pseudo_normal"] * 0.5 + 0.5,
+                # render_pkg["pseudo_normal"] * 0.5 + 0.5,
             ]
 
             if is_pbr:
                 visualization_list.extend([
+                    render_pkg["pbr"],
                     render_pkg["base_color"],
                     render_pkg["roughness"].repeat(3, 1, 1),
                     render_pkg["metallic"].repeat(3, 1, 1),
@@ -322,7 +324,6 @@ def save_training_vis(viewpoint_cam, gaussians, background, render_fn, pipe, opt
                     render_pkg["lights"],
                     render_pkg["local_lights"],
                     render_pkg["global_lights"],
-                    render_pkg["pbr"],
                 ])
 
             grid = torch.stack(visualization_list, dim=0)

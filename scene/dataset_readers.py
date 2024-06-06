@@ -202,7 +202,7 @@ def readColmapCameras(cam_extrinsics, cam_intrinsics, images_folder, white_backg
             image = image[:, :, :3] * image[:, :, 3:4] + bg * (1 - image[:, :, 3:4])
 
         mask_path = os.path.join(os.path.dirname(images_folder), "masks", os.path.basename(extr.name))
-        mask = np.array(Image.open(mask_path), dtype=np.float32) / 255
+        mask = (np.array(Image.open(mask_path)) > 0).astype(np.float32)
 
         # add depth for COLMAP dataset
         depth = None
